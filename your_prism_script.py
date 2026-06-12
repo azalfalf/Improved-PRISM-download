@@ -24,10 +24,7 @@ TEMP_EXTRACT_DIR = "./prism_temp"
 
 os.makedirs(TEMP_EXTRACT_DIR, exist_ok=True)
 
-# Mount Google Drive safely
-if not os.path.exists("/content/drive"):
-    from google.colab import drive
-    drive.mount("/content/drive")
+
 
 # Calculate target date (Yesterday)
 yesterday = datetime.now() - timedelta(days=1)
