@@ -1,0 +1,35 @@
+name: Daily PRISM and ET Sync
+
+on:
+  schedule:
+    # Runs every single day at 7:00 AM UTC (12:00 AM / Midnight Mountain Standard Time)
+    - cron: '0 7 * * *' 
+  workflow_dispatch: # This adds a manual "Run button" so you can test it whenever you want
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+
+      - name: Set up Python Environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Geospatial Libraries
+        run: |
+          pip install rasterio pandas numpy requests
+
+      - name: Run Climate Calculation Engine
+        run: |
+          python your_prism_script.py
+
+      - name: Commit and Push New Row to GitHub Storage
+        run: |
+          git config --global user.name "Automated Climate Bot"
+          git config --global user.email "bot@github.com"
+          git add TEST_DATA.csv PROCESSED_ET_HU_DATA.csv
+          git commit -m "Automated daily climate sync: $(date +'%Y-%m-%d')" || exit 0
+          git push
