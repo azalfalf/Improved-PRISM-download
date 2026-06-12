@@ -30,6 +30,6 @@ jobs:
         run: |
           git config --global user.name "Automated Climate Bot"
           git config --global user.email "bot@github.com"
-          git add TEST_DATA.csv CLEAN_ET_HU_DATA.csv
+          git add TEST_DATA.csv CLEAN_ET_HU_DATA.csv YESTERDAY_ONLY.csv
           git commit -m "Automated daily climate sync: $(date +'%Y-%m-%d')" || exit 0
           git push
