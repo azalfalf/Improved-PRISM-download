@@ -171,8 +171,3 @@ df["Cumulative_HU"] = df["Daily_HU"].cumsum()
 
 df.to_csv(OUTPUT_PATH, index=False)
 print(f"🚀 Execution successful! Output sync complete at: {OUTPUT_PATH}")
-# 🟢 NEW: Save a tiny, single-row file containing only yesterday's newest metrics
-yesterday_only_df = df.tail(1)
-yesterday_only_df.to_csv("YESTERDAY_ONLY.csv", index=False)
-print("🎯 Created single-row live stream snapshot file.")
-
