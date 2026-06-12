@@ -1,6 +1,3 @@
-# Ensure you run this once in a cell above if it's missing:
-# !pip install rasterio requests --quiet
-
 import os
 import zipfile
 import math
@@ -18,13 +15,11 @@ LATITUDE = 35.879129
 LONGITUDE = -106.615240
 ELEVATION = 1732  # meters
 
-MASTER_DRIVE_PATH = "/content/drive/MyDrive/TEST_DATA.csv"
-OUTPUT_PATH = "/content/drive/MyDrive/PROCESSED_ET_HU_DATA.csv"
+MASTER_DRIVE_PATH = "TEST_DATA.csv"
+OUTPUT_PATH = "PROCESSED_ET_HU_DATA.csv"
 TEMP_EXTRACT_DIR = "./prism_temp"
 
 os.makedirs(TEMP_EXTRACT_DIR, exist_ok=True)
-
-
 
 # Calculate target date (Yesterday)
 yesterday = datetime.now() - timedelta(days=1)
@@ -34,12 +29,7 @@ date_str = yesterday.strftime("%Y%m%d")  # Format: YYYYMMDD
 # 🔄 STEP 1: DOWNLOAD & RASTERIO EXTRACTION
 # ==========================================
 def extract_pixel_from_prism(variable, date_string, lat, lon):
-    """
-    Downloads the daily PRISM raster zip file, extracts the GeoTIFF, 
-    and samples the exact coordinate pixel value using rasterio.
-    """
-    # 🟢 FIXED: Added the required forward slash right after the base url
-    url = f"https://services.nacse.org/prism/data/get/us/4km/{variable}/{date_string}"
+    url = f"https://nacse.org{variable}/{date_string}"
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     
     print(f"📥 Downloading PRISM {variable.upper()} raster for {date_string}...")
@@ -48,23 +38,19 @@ def extract_pixel_from_prism(variable, date_string, lat, lon):
     if response.status_code != 200:
         raise ConnectionError(f"Failed to fetch {variable}. PRISM HTTP Error: {response.status_code}")
         
-    # Unpack zip archive in system memory cache
     with zipfile.ZipFile(BytesIO(response.content)) as z:
         raster_file_name = next(name for name in z.namelist() if name.endswith(('.bil', '.tif')))
         z.extract(raster_file_name, path=TEMP_EXTRACT_DIR)
         full_raster_path = os.path.join(TEMP_EXTRACT_DIR, raster_file_name)
 
-    # Intersection query using Rasterio spatial coordinate map transforms
     with rasterio.open(full_raster_path) as src:
         coord_pair = [(lon, lat)]
         sampled_generator = src.sample(coord_pair)
         pixel_value = next(sampled_generator)
         
-    # Delete temporary storage arrays
     os.remove(full_raster_path)
-    return float(pixel_value[0])
+    return float(pixel_value)
 
-# Try running live update pipeline; fall back gracefully to Drive database on error
 try:
     fresh_tmax = extract_pixel_from_prism("tmax", date_str, LATITUDE, LONGITUDE)
     fresh_tmin = extract_pixel_from_prism("tmin", date_str, LATITUDE, LONGITUDE)
@@ -79,10 +65,9 @@ try:
         'tmax (degrees C)': [fresh_tmax],
         'vpdmin (hPa)': [fresh_vmin],
         'vpdmax (hPa)': [fresh_vmax],
-        'soltotal (MJ/m^2/day)': [15.0]  # Standard fallback clear-sky placeholder constant
+        'soltotal (MJ/m^2/day)': [15.0]  
     })
     
-    # 🟢 FIXED: Added safety header scanning checks within the file merger
     if os.path.exists(MASTER_DRIVE_PATH):
         with open(MASTER_DRIVE_PATH, "r") as f:
             peek = f.readline()
@@ -104,27 +89,20 @@ try:
 
 except Exception as e:
     print(f"\n⚠️ Live update skipped. Reason: {e}")
-    print("🔄 Activating safe recovery routine using historical database...")
-    
     if os.path.exists(MASTER_DRIVE_PATH):
-        # 🟢 FIXED: Applied identical auto-detect logic here to eliminate KeyError: 'Date'
         with open(MASTER_DRIVE_PATH, "r") as f:
             peek = f.readline()
-        
         if "date" in peek.lower() or "ppt" in peek.lower():
             df = pd.read_csv(MASTER_DRIVE_PATH)
         else:
             df = pd.read_csv(MASTER_DRIVE_PATH, skiprows=10)
-            
         df.columns = df.columns.str.strip()
     else:
-        raise FileNotFoundError(f"Critical Error: No historical file found at: {MASTER_DRIVE_PATH}")
+        raise FileNotFoundError("Critical Error: No historical file found.")
 
 # ==========================================
 # 🔄 STEP 2: RUN COMPUTATION LOGIC PIPELINES
 # ==========================================
-
-# Safely track down column string positions dynamically
 actual_date_col = next(c for c in df.columns if any(x in c.lower() for x in ["date", "name"]))
 t_max = next(c for c in df.columns if "tmax" in c.lower())
 t_min = next(c for c in df.columns if "tmin" in c.lower())
@@ -191,6 +169,5 @@ tavg_bounded = (tmax_bounded + tmin_bounded) / 2.0
 df["Daily_HU"] = np.maximum(0.0, tavg_bounded - 50.0)
 df["Cumulative_HU"] = df["Daily_HU"].cumsum()
 
-# Save final processed tracking files back to Drive
 df.to_csv(OUTPUT_PATH, index=False)
 print(f"🚀 Execution successful! Output sync complete at: {OUTPUT_PATH}")
