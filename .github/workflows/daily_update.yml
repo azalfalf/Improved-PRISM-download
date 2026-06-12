@@ -2,19 +2,19 @@ name: Daily PRISM and ET Sync
 
 on:
   schedule:
-    # Runs every single day at 7:00 AM UTC (12:00 AM / Midnight Mountain Standard Time)
     - cron: '0 7 * * *' 
-  workflow_dispatch: # This adds a manual "Run button" so you can test it whenever you want
+  workflow_dispatch: 
 
 jobs:
   run-pipeline:
     runs-on: ubuntu-latest
     steps:
+      # 🟢 FIXED: Upgraded actions from @v4/@v5 to v4.2.2/v5.4.0 to support Node 24
       - name: Checkout repository code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Set up Python Environment
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v5.4.0
         with:
           python-version: '3.12'
 
