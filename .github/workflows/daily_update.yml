@@ -9,7 +9,6 @@ jobs:
   run-pipeline:
     runs-on: ubuntu-latest
     steps:
-      # 🟢 FIXED: Upgraded actions from @v4/@v5 to v4.2.2/v5.4.0 to support Node 24
       - name: Checkout repository code
         uses: actions/checkout@v4.2.2
 
@@ -26,10 +25,16 @@ jobs:
         run: |
           python your_prism_script.py
 
-      - name: Commit and Push New Row to GitHub Storage
-        run: |
-          git config --global user.name "Automated Climate Bot"
-          git config --global user.email "bot@github.com"
-          git add TEST_DATA.csv CLEAN_ET_HU_DATA.csv YESTERDAY_ONLY.csv
-          git commit -m "Automated daily climate sync: $(date +'%Y-%m-%d')" || exit 0
-          git push
+      # 🟢 NEW: Instantly emails the updated Excel-ready spreadsheet file to your team
+      - name: Send Automated Daily Email to Team
+        uses: dawidd6/action-send-mail@v4
+        with:
+          server_address: ://gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "📊 New Daily Climate Update: ETo & Heat Units"
+          to: "PASTE_YOUR_TEAM_EMAILS_HERE_SEPARATED_BY_COMMAS"
+          from: "Climate Automation Bot"
+          body: "Hello Team,\n\nPlease find attached yesterday's processed PRISM weather metrics, Penman-Monteith crop ETo depth calculations, and 85/50 agronomical Heat Unit totals.\n\nBest regards,\nYour Automated Crop Bot"
+          attachments: "CLEAN_ET_HU_DATA.csv"
